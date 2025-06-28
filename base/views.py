@@ -9,8 +9,14 @@ import fitz, base64, os
 
 # Create your views here.
 
-def highlight_pdf(input_path, output_path, search_term):
+def highlight_pdf(input_path, output_path, search_term, key):
     doc = fitz.open(input_path)
+    if doc.needs_pass:
+        if key == "":
+            raise ValueError("Document is encrypted.")
+        if not doc.authenticate(key):
+            raise ValueError("Document password is incorrect.")
+        
     for page in doc:
         found = page.search_for(search_term)
         for inst in found:
@@ -47,7 +53,11 @@ def highlight(request):
     # Highlight and save to output
     output_filename = f"highlighted_{data['pdf']['name']}"
     output_path = os.path.join(settings.MEDIA_ROOT, output_filename)
-    highlight_pdf(input_path, output_path, data['search'])
+    try:
+        highlight_pdf(input_path, output_path, data['search'], data['key'])
+    except ValueError:
+        return Response({"msg":"File is encrypted. Provide the valid key to decrypt this."},status = 400)
+
 
     # Convert result to base64
     with open(output_path, 'rb') as f:

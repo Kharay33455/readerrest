@@ -35,17 +35,19 @@ def index(request):
 @api_view(['POST'])
 def highlight(request):
     data = request.data
+    # Check data
     if not data['pdf']:
         return Response({"msg":"PDF file not uploaded."},status = 400)
     if not data['search']:
         return Response({"msg":"No value to search"},status = 400)
     
+    # Sanitize uri
     uri = data['pdf']['uri']
     if "," in uri:
         uri = uri.split(",")[1]
 
+    # Input file
     file = base64.b64decode(uri)
-
     input_path = os.path.join(settings.MEDIA_ROOT , data['pdf']['name'])
     with open(input_path, 'wb') as f:
             f.write(file)
@@ -56,15 +58,16 @@ def highlight(request):
     try:
         highlight_pdf(input_path, output_path, data['search'], data['key'])
     except ValueError:
-        return Response({"msg":"File is encrypted. Provide the valid key to decrypt this."},status = 400)
+        return Response({"msg":"File is encrypted. Provide the valid key to decrypt and proceed."},status = 400)
 
 
     # Convert result to base64
     with open(output_path, 'rb') as f:
         result_base64 = base64.b64encode(f.read()).decode('utf-8')
 
-    # Clean up
+    # Delete data
     os.remove(input_path)
+    os.remove(output_path)
     
     
     return Response({"result": result_base64}, status = 200)
